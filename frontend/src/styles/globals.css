@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Global Reset === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Poppins', system-ui, sans-serif;
+  color: #1A1A1A;
+  background-color: #FFFFFF;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Custom Component Classes === */
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-7 py-3 bg-crimson text-white font-semibold rounded-btn
+           hover:bg-crimson-dark transition-all duration-300 text-sm tracking-wide;
+  }
+
+  .btn-primary-outline {
+    @apply inline-flex items-center gap-2 px-7 py-3 border-2 border-crimson text-crimson font-semibold rounded-btn
+           hover:bg-crimson hover:text-white transition-all duration-300 text-sm tracking-wide;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-7 py-3 bg-dark text-white font-semibold rounded-btn
+           hover:bg-gray-800 transition-all duration-300 text-sm tracking-wide;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-red-500 text-white font-semibold rounded-btn hover:bg-red-600 transition-colors;
+  }
+
+  /* Container */
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white rounded-card shadow-card p-6 transition-all duration-300 hover:shadow-card-hover;
+  }
+
+  /* Inputs */
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-200 rounded-card focus:outline-none focus:border-crimson
+           focus:ring-2 focus:ring-crimson/20 transition-all duration-200 text-sm;
+  }
+
+  /* Section titles */
+  .section-title {
+    @apply text-3xl md:text-4xl font-serif font-bold text-dark text-center;
+  }
+
+  .section-subtitle {
+    @apply text-gray-500 text-center mt-3 max-w-xl mx-auto text-sm md:text-base;
+  }
+}
+
+/* === Scrollbar Styling === */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* === Focus Styles (Accessibility) === */
+*:focus-visible {
+  outline: 2px solid #8B1A2B;
+  outline-offset: 2px;
+}
+
+/* === Animations with delay utility === */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }

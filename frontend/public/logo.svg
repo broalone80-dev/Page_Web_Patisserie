@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" fill="none">
+  <style>
+    .brand { font-family: 'Georgia', serif; }
+    .tagline { font-family: 'Arial', sans-serif; font-size: 11px; }
+  </style>
+  <!-- Heart -->
+  <path d="M130 30 C130 15, 155 10, 155 30 C155 10, 180 15, 180 30 C180 55, 155 65, 155 65 C155 65, 130 55, 130 30Z" fill="#D4883A" opacity="0.9"/>
+  <!-- Whisk -->
+  <path d="M185 20 C190 35, 195 45, 200 25 M200 25 C205 35, 210 45, 215 20" stroke="#8B1A2B" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <circle cx="200" cy="18" r="3" fill="#8B1A2B"/>
+  <!-- Small hearts -->
+  <path d="M120 25 C120 20, 127 18, 127 25 C127 18, 134 20, 134 25 C134 32, 127 35, 127 35 C127 35, 120 32, 120 25Z" fill="#8B1A2B" opacity="0.8" transform="scale(0.5) translate(220 20)"/>
+  <path d="M120 25 C120 20, 127 18, 127 25 C127 18, 134 20, 134 25 C134 32, 127 35, 127 35 C127 35, 120 32, 120 25Z" fill="#8B1A2B" opacity="0.6" transform="scale(0.35) translate(500 40)"/>
+  <!-- Tagline -->
+  <text x="110" y="82" class="tagline" fill="#D4883A" font-weight="600" letter-spacing="1">PAUSE SUCRÉ ET SALÉ CHEZ</text>
+  <!-- Brand Name -->
+  <text x="95" y="112" class="brand" fill="#8B1A2B" font-size="38" font-weight="700" font-style="italic">GuiGui</text>
+</svg>
