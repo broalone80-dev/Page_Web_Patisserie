@@ -59,6 +59,8 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/config/config.ts",
+    "src/config/sentry.ts"
   ]
 }
