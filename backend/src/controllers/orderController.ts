@@ -44,9 +44,10 @@ export class OrderController {
       const order = await prisma.$transaction(async (tx: any) => {
         // 1. Lock & validate products inside transaction
         const productIds = items.map((i: any) => i.productId);
-        // Use raw query with FOR UPDATE to lock rows (MySQL)
+        // Use raw query with FOR UPDATE to lock rows (PostgreSQL)
+        const placeholders = productIds.map((_: any, i: number) => `$${i + 1}`).join(',');
         const lockedProducts: any[] = await tx.$queryRawUnsafe(
-          `SELECT id, name, priceCents, stock, isActive FROM products WHERE id IN (${productIds.map(() => '?').join(',')}) FOR UPDATE`,
+          `SELECT id, name, "priceCents", stock, "isActive" FROM products WHERE id IN (${placeholders}) FOR UPDATE`,
           ...productIds
         );
 

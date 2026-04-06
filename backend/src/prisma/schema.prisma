@@ -2,12 +2,11 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -98,7 +97,7 @@ model Category {
   slug        String   @unique
   description String?  @db.Text
   imageUrl    String?
-  parentId    String?  @db.VarChar(191)
+  parentId    String?
   position    Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -133,7 +132,6 @@ model Product {
   @@index([isActive])
   @@index([isFeatured])
   @@index([isActive, isFeatured])
-  @@fulltext([name, description])
   @@map("products")
 }
 
@@ -345,7 +343,7 @@ model DeliveryCode {
   id        String   @id @default(uuid())
   orderId   String   @unique
   codeHash  String
-  code      String?  @db.VarChar(6)
+  code      String?
   expiresAt DateTime
   isUsed    Boolean  @default(false)
   usedAt    DateTime?
