@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '@config/database';
 import { sendSuccess, sendError } from '@utils/responses';
 import { NotificationService } from '@services/notificationService';
+import { ProductService } from '@services/productService';
 
 /**
  * Admin Controller – Dashboard, Users management, and Order status updates
@@ -136,6 +137,30 @@ export class AdminController {
   }
 
   /**
+   * Toggle user manager status
+   */
+  static async toggleManagerStatus(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { id } = req.params;
+      const user = await prisma.user.findUnique({ where: { id } });
+      if (!user) {
+        sendError(res, 404, 'Utilisateur non trouvé');
+        return;
+      }
+
+      const updated = await prisma.user.update({
+        where: { id },
+        data: { isManager: !user.isManager },
+        select: { id: true, email: true, fullName: true, isManager: true },
+      });
+
+      sendSuccess(res, 200, `${updated.fullName || updated.email} est ${updated.isManager ? 'maintenant gestionnaire' : 'plus gestionnaire'}`, { user: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Get all orders (admin) with filters
    */
   static async getOrders(req: Request, res: Response, next: NextFunction) {
@@ -213,6 +238,7 @@ export class AdminController {
       if (order.userId) {
         await NotificationService.notifyOrderStatusChange(
           order.userId,
+          id,
           order.orderNumber,
           status,
           order.user?.email
@@ -232,6 +258,22 @@ export class AdminController {
       });
 
       sendSuccess(res, 200, 'Statut commande mis à jour', { order: updated });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Admin product list – returns ALL products (including inactive)
+   */
+  static async getProducts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 200, 500);
+      const skip = (page - 1) * limit;
+
+      const result = await ProductService.getAllProducts(skip, limit, undefined, undefined);
+      sendSuccess(res, 200, 'Produits récupérés', { products: result.products, total: result.total, page, limit });
     } catch (error) {
       next(error);
     }
@@ -340,6 +382,9 @@ export class AdminController {
     try {
       const { id } = req.params;
       const { images } = req.body; // [{url, publicId, altText, position}]
+
+      // Delete existing images for this product before adding new ones
+      await prisma.productImage.deleteMany({ where: { productId: id } });
 
       const created = await prisma.productImage.createMany({
         data: images.map((img: any) => ({

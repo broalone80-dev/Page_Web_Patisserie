@@ -1,302 +1,240 @@
 import { Request, Response } from 'express';
 import prisma from '@config/database';
-import { PaymentService } from '@services/paymentService';
+import { MobileMoneyService } from '@services/mobileMoneyService';
 import { sendSuccess, sendError } from '@utils/responses';
-import { ApiError } from '@utils/errors';
-import crypto from 'crypto';
+import { AuthRequest } from '../types/index';
 
 export class PaymentController {
   /**
-   * POST /api/payments/initiate
-   * Initiate payment for an order
+   * POST /api/payments/mobile/initiate
+   * Initiate Mobile Money payment (Orange Money / MTN MoMo)
    */
-  static async initiatePayment(req: Request, res: Response) {
+  static async initiatePayment(req: AuthRequest, res: Response) {
     try {
-      const { orderId, provider } = req.body;
+      const userId = req.user?.id;
+      if (!userId) { sendError(res, 401, 'Non authentifié'); return; }
 
-      if (!['flutterwave', 'cinetpay'].includes(provider)) {
-        sendError(res, 400, 'Invalid payment provider');
+      const { orderId, provider, phone } = req.body;
+
+      // Validate provider
+      if (!['orange_money', 'mtn_momo'].includes(provider)) {
+        sendError(res, 400, 'Fournisseur invalide. Utilisez orange_money ou mtn_momo.');
         return;
       }
 
-      // Get order details
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: {
-          user: true,
-          items: true,
-        },
-      });
-
-      if (!order) {
-        sendError(res, 404, 'Order not found');
+      if (!phone) {
+        sendError(res, 400, 'Numéro de téléphone requis');
         return;
       }
-
-      if (order.status !== 'pending') {
-        sendError(res, 400, 'Order status does not allow payment');
-        return;
-      }
-
-      // Create payment
-      let paymentResult;
-      if (provider === 'flutterwave') {
-        paymentResult = await PaymentService.createFlutterwavePayment(
-          orderId,
-          order.totalCents,
-          order.user?.email || '',
-          order.user?.fullName || 'Customer'
-        );
-      } else {
-        paymentResult = await PaymentService.createCinetpayPayment(
-          orderId,
-          order.totalCents,
-          order.user?.email || '',
-          order.user?.fullName || 'Customer'
-        );
-      }
-
-      // Store payment record
-      await prisma.payment.create({
-        data: {
-          orderId,
-          provider,
-          providerPaymentId: paymentResult.reference,
-          amountCents: order.totalCents,
-          status: 'initiated',
-        },
-      });
-
-      sendSuccess(res, 200, {
-        paymentLink: paymentResult.paymentLink,
-        provider,
-      }, 'Payment link generated');
-    } catch (error) {
-      console.error('Payment initiation failed:', error);
-      sendError(res, 500, 'Failed to initiate payment');
-    }
-  }
-
-  /**
-   * GET /api/payments/callback/flutterwave
-   * Flutterwave payment callback
-   */
-  static async flutterwaveCallback(req: Request, res: Response) {
-    try {
-      const { status, tx_ref } = req.query;
-
-      // Extract order ID from tx_ref (format: ORD-{orderId})
-      const orderId = (tx_ref as string)?.replace('ORD-', '');
 
       if (!orderId) {
-        res.status(400).json({ error: 'Invalid transaction reference' });
+        sendError(res, 400, 'ID commande requis');
         return;
       }
 
-      // Get latest payment for this order
-      const payment = await prisma.payment.findFirst({
-        where: { orderId, provider: 'flutterwave' },
-        orderBy: { createdAt: 'desc' },
+      // Anti-fraud: rate limit (max 5 payment attempts per user in 30 min)
+      const recentAttempts = await prisma.paymentAttempt.count({
+        where: {
+          userId,
+          createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) },
+        },
+      });
+
+      if (recentAttempts >= 5) {
+        await prisma.fraudLog.create({
+          data: {
+            userId,
+            orderId,
+            action: 'rate_exceeded',
+            details: { attempts: recentAttempts },
+            ipAddress: req.ip,
+            severity: 'high',
+          },
+        });
+        sendError(res, 429, 'Trop de tentatives. Réessayez dans 30 minutes.');
+        return;
+      }
+
+      const result = await MobileMoneyService.initiatePayment({
+        orderId,
+        provider,
+        phone,
+        userId,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      sendSuccess(res, 200, result.message, {
+        paymentId: result.paymentId,
+        status: result.status,
+      });
+    } catch (error: any) {
+      console.error('[PaymentController] initiate error:', error.message);
+      sendError(res, 400, error.message || 'Échec de la demande de paiement');
+    }
+  }
+
+  /**
+   * GET /api/payments/mobile/status/:paymentId
+   * Poll payment status (for weak network / mobile-first)
+   */
+  static async checkStatus(req: AuthRequest, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) { sendError(res, 401, 'Non authentifié'); return; }
+
+      const { paymentId } = req.params;
+
+      // Ownership check: verify payment belongs to user's order
+      const payment = await prisma.payment.findUnique({
+        where: { id: paymentId },
+        include: { order: { select: { userId: true } } },
       });
 
       if (!payment) {
-        res.status(404).json({ error: 'Payment not found' });
+        sendError(res, 404, 'Paiement introuvable');
         return;
       }
 
-      // Verify payment status with Flutterwave
-      if (payment.providerPaymentId) {
-        try {
-          const verification = await PaymentService.verifyFlutterwavePayment(
-            payment.providerPaymentId
-          );
-
-          // Update payment and order status
-          if (verification.status === 'completed') {
-            await prisma.$transaction([
-              prisma.payment.update({
-                where: { id: payment.id },
-                data: { status: 'successful' },
-              }),
-              prisma.order.update({
-                where: { id: orderId },
-                data: { status: 'paid', paymentStatus: 'successful' },
-              }),
-            ]);
-
-            res.redirect(`${process.env.FRONTEND_URL}/orders/${orderId}?status=success`);
-            return;
-          }
-        } catch (error) {
-          console.error('Flutterwave verification failed:', error);
-        }
-      }
-
-      res.redirect(`${process.env.FRONTEND_URL}/orders/${orderId}?status=failed`);
-    } catch (error) {
-      console.error('Flutterwave callback error:', error);
-      res.status(500).json({ error: 'Callback processing failed' });
-    }
-  }
-
-  /**
-   * GET /api/payments/callback/cinetpay
-   * CinetPay payment callback
-   */
-  static async cinetpayCallback(req: Request, res: Response) {
-    try {
-      const { payment_token } = req.query;
-
-      if (!payment_token) {
-        res.status(400).json({ error: 'Invalid payment token' });
+      // Only owner, admin, or manager can check
+      if (payment.order?.userId !== userId && !req.user?.isAdmin && !req.user?.isManager) {
+        sendError(res, 403, 'Non autorisé');
         return;
       }
 
-      // Find payment by token
-      const payment = await prisma.payment.findFirst({
-        where: { providerPaymentId: payment_token as string },
+      const status = await MobileMoneyService.checkPaymentStatus(paymentId);
+
+      sendSuccess(res, 200, status.message, {
+        paymentId,
+        status: status.status,
       });
-
-      if (!payment) {
-        res.status(404).json({ error: 'Payment not found' });
-        return;
-      }
-
-      // Verify payment with CinetPay
-      try {
-        const verification = await PaymentService.verifyCinetpayPayment(payment_token as string);
-
-        if (verification.status === 'completed') {
-          await prisma.$transaction([
-            prisma.payment.update({
-              where: { id: payment.id },
-              data: { status: 'successful' },
-            }),
-            prisma.order.update({
-              where: { id: payment.orderId },
-              data: { status: 'paid', paymentStatus: 'successful' },
-            }),
-          ]);
-
-          res.redirect(
-            `${process.env.FRONTEND_URL}/orders/${payment.orderId}?status=success`
-          );
-          return;
-        }
-      } catch (error) {
-        console.error('CinetPay verification failed:', error);
-      }
-
-      res.redirect(`${process.env.FRONTEND_URL}/orders/${payment.orderId}?status=failed`);
-    } catch (error) {
-      console.error('CinetPay callback error:', error);
-      res.status(500).json({ error: 'Callback processing failed' });
+    } catch (error: any) {
+      sendError(res, 500, 'Erreur vérification paiement');
     }
   }
 
   /**
-   * POST /api/payments/webhook/flutterwave
-   * Flutterwave webhook handler
+   * POST /api/payments/mobile/webhook/orange
+   * Orange Money webhook (no auth - signature verified internally)
    */
-  static async flutterwaveWebhook(req: Request, res: Response) {
+  static async orangeWebhook(req: Request, res: Response) {
     try {
-      const signature = req.headers['verif-hash'] as string;
-      const hash = crypto.createHash('sha256').update(JSON.stringify(req.body)).digest('hex');
+      const signature = req.headers['x-webhook-signature'] as string ||
+                        req.headers['authorization'] as string;
 
-      // Verify webhook signature
-      if (signature !== hash) {
-        sendError(res, 401, 'Invalid webhook signature');
-        return;
+      const result = await MobileMoneyService.processWebhook('orange_money', req.body, signature);
+
+      if (result.processed) {
+        res.status(200).json({ status: 'OK' });
+      } else {
+        res.status(200).json({ status: 'IGNORED' });
       }
-
-      const { event, data } = req.body;
-
-      if (event === 'charge.completed') {
-        const txRef = data.tx_ref; // ORD-{orderId}
-        const orderId = txRef.replace('ORD-', '');
-
-        // Update payment and order
-        const payment = await prisma.payment.findFirst({
-          where: { orderId, provider: 'flutterwave' },
-          orderBy: { createdAt: 'desc' },
-        });
-
-        if (payment) {
-          await prisma.$transaction([
-            prisma.payment.update({
-              where: { id: payment.id },
-              data: { status: 'successful', metadata: { webhookData: data } },
-            }),
-            prisma.order.update({
-              where: { id: orderId },
-              data: { status: 'paid', paymentStatus: 'successful' },
-            }),
-          ]);
-        }
-      }
-
-      sendSuccess(res, 200, null, 'Webhook processed');
-    } catch (error) {
-      console.error('Flutterwave webhook error:', error);
-      sendError(res, 500, 'Webhook processing failed');
+    } catch (error: any) {
+      console.error('[Webhook] Orange error:', error.message);
+      // Always return 200 to webhooks to prevent retries on our errors
+      res.status(200).json({ status: 'ERROR' });
     }
   }
 
   /**
-   * POST /api/payments/webhook/cinetpay
-   * CinetPay webhook handler
+   * POST /api/payments/mobile/webhook/mtn
+   * MTN MoMo webhook (no auth - signature verified internally)
    */
-  static async cinetpayWebhook(req: Request, res: Response) {
+  static async mtnWebhook(req: Request, res: Response) {
     try {
-      const { status, payment_id, payment_token } = req.body;
+      const signature = req.headers['x-webhook-signature'] as string;
 
-      if (status === 'accepted') {
-        const payment = await prisma.payment.findFirst({
-          where: { providerPaymentId: payment_token },
-        });
+      const result = await MobileMoneyService.processWebhook('mtn_momo', req.body, signature);
 
-        if (payment) {
-          await prisma.$transaction([
-            prisma.payment.update({
-              where: { id: payment.id },
-              data: { status: 'successful', metadata: { paymentId: payment_id } },
-            }),
-            prisma.order.update({
-              where: { id: payment.orderId },
-              data: { status: 'paid', paymentStatus: 'successful' },
-            }),
-          ]);
-        }
+      if (result.processed) {
+        res.status(200).json({ status: 'OK' });
+      } else {
+        res.status(200).json({ status: 'IGNORED' });
+      }
+    } catch (error: any) {
+      console.error('[Webhook] MTN error:', error.message);
+      res.status(200).json({ status: 'ERROR' });
+    }
+  }
+
+  /**
+   * POST /api/payments/manual/confirm
+   * Admin/Manager: Confirm a manual payment
+   */
+  static async confirmManualPayment(req: AuthRequest, res: Response) {
+    try {
+      if (!req.user?.isAdmin && !req.user?.isManager) {
+        sendError(res, 403, 'Réservé aux gestionnaires');
+        return;
       }
 
-      sendSuccess(res, 200, null, 'Webhook processed');
-    } catch (error) {
-      console.error('CinetPay webhook error:', error);
-      sendError(res, 500, 'Webhook processing failed');
+      const { paymentId } = req.body;
+      if (!paymentId) {
+        sendError(res, 400, 'ID paiement requis');
+        return;
+      }
+
+      await MobileMoneyService.confirmManualPayment(paymentId, req.user.id);
+
+      sendSuccess(res, 200, 'Paiement confirmé avec succès');
+    } catch (error: any) {
+      sendError(res, 400, error.message || 'Échec confirmation');
     }
   }
 
   /**
    * GET /api/payments/:orderId
-   * Get payment details for order
+   * Get payment details for an order (with ownership check)
    */
-  static async getPayment(req: Request, res: Response) {
+  static async getPayment(req: AuthRequest, res: Response) {
     try {
+      const userId = req.user?.id;
+      if (!userId) { sendError(res, 401, 'Non authentifié'); return; }
+
       const { orderId } = req.params;
+
+      // Ownership: find order first
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        select: { userId: true },
+      });
+
+      if (!order) {
+        sendError(res, 404, 'Commande introuvable');
+        return;
+      }
+
+      // Only owner, admin, or manager
+      if (order.userId !== userId && !req.user?.isAdmin && !req.user?.isManager) {
+        sendError(res, 403, 'Non autorisé');
+        return;
+      }
 
       const payment = await prisma.payment.findFirst({
         where: { orderId },
         orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          provider: true,
+          status: true,
+          amountCents: true,
+          currency: true,
+          paymentPhone: true,
+          webhookVerified: true,
+          completedAt: true,
+          createdAt: true,
+          failureReason: true,
+        },
       });
 
       if (!payment) {
-        sendError(res, 404, 'Payment not found');
+        sendError(res, 404, 'Aucun paiement trouvé');
         return;
       }
 
-      sendSuccess(res, 200, payment);
+      sendSuccess(res, 200, 'Détails du paiement', payment);
     } catch (error) {
-      sendError(res, 500, 'Failed to fetch payment');
+      sendError(res, 500, 'Erreur récupération paiement');
     }
   }
 }

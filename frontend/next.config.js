@@ -8,8 +8,13 @@ const nextConfig = {
         hostname: 'images.unsplash.com',
       },
       {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '4000',
+      },
+      {
         protocol: 'https',
-        hostname: '**', // Allow any https images for flexibility
+        hostname: '**',
       },
     ],
     formats: ['image/avif', 'image/webp'],

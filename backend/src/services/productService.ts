@@ -1,5 +1,5 @@
 import prisma from '@config/database';
-import { CreateProductDTO, UpdateProductDTO } from '@types/index';
+import { CreateProductDTO, UpdateProductDTO } from '../types/index';
 import { ApiError } from '@utils/errors';
 
 export class ProductService {
@@ -9,26 +9,41 @@ export class ProductService {
   static async getAllProducts(
     skip = 0,
     take = 20,
-    isActive = true
+    isActive?: boolean,
+    isFeatured?: boolean,
+    search?: string
   ) {
+    const where: any = {};
+    if (isActive !== undefined) {
+      where.isActive = isActive;
+    }
+    if (isFeatured !== undefined) {
+      where.isFeatured = isFeatured;
+    }
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { description: { contains: search } },
+      ];
+    }
+
     const products = await prisma.product.findMany({
-      where: { isActive },
+      where,
       skip,
       take,
       include: {
-        _count: {
-          select: { images: true },
+        categories: {
+          include: { category: true },
         },
         images: {
+          orderBy: { position: 'asc' },
           take: 1,
         },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    const total = await prisma.product.count({
-      where: { isActive },
-    });
+    const total = await prisma.product.count({ where });
 
     return { products, total };
   }

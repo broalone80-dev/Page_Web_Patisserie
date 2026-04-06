@@ -9,6 +9,7 @@ export interface AuthPayload extends JwtPayload {
   id: string;
   email: string;
   isAdmin: boolean;
+  isManager: boolean;
 }
 
 export interface AuthRequest extends Request {
@@ -47,9 +48,12 @@ export interface UpdateProductDTO extends Partial<CreateProductDTO> { }
 
 export interface CreateOrderDTO {
   items: OrderItemInput[];
-  fulfillment: 'delivery' | 'pickup' | 'cash_on_delivery';
+  fulfillment: 'delivery' | 'pickup';
   addressId?: string;
   notes?: string;
+  deliveryFee?: number;
+  paymentMethod?: 'orange_money' | 'mtn_momo' | 'cash_on_delivery';
+  paymentPhone?: string;
 }
 
 export interface OrderItemInput {
@@ -58,5 +62,10 @@ export interface OrderItemInput {
 }
 
 export interface UpdateOrderStatusDTO {
-  status: 'pending' | 'en_preparation' | 'validee' | 'livree' | 'cancelled';
+  status: 'pending' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
+  note?: string;
+}
+
+export interface ValidateDeliveryDTO {
+  code: string;
 }

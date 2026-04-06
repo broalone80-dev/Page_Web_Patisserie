@@ -1,24 +1,22 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import bcryptjs from 'bcryptjs';
 import { config } from '@config/env';
-import { AuthPayload } from '@types/index';
+import { AuthPayload } from '../types/index';
 
 /**
  * Generate JWT access token
  */
 export const generateAccessToken = (payload: Omit<AuthPayload, 'iat' | 'exp'>): string => {
-  return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
-  });
+  const options: SignOptions = { expiresIn: config.jwt.expiresIn as any };
+  return jwt.sign(payload, config.jwt.secret, options);
 };
 
 /**
  * Generate JWT refresh token
  */
 export const generateRefreshToken = (userId: string): string => {
-  return jwt.sign({ id: userId }, config.jwt.refreshSecret, {
-    expiresIn: config.jwt.refreshExpiresIn,
-  });
+  const options: SignOptions = { expiresIn: config.jwt.refreshExpiresIn as any };
+  return jwt.sign({ id: userId }, config.jwt.refreshSecret, options);
 };
 
 /**

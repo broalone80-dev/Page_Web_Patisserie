@@ -4,6 +4,7 @@ export interface User {
   fullName?: string;
   phone?: string;
   isAdmin: boolean;
+  isManager: boolean;
 }
 
 export interface AuthResponse {
@@ -58,11 +59,22 @@ export interface OrderItem {
   totalCents: number;
 }
 
+export interface OrderStatusLog {
+  id: string;
+  orderId: string;
+  fromStatus: string | null;
+  toStatus: string;
+  changedBy: string | null;
+  note: string | null;
+  changer?: { id: string; fullName: string | null };
+  createdAt: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
   userId: string;
-  status: 'pending' | 'paid' | 'preparing' | 'ready' | 'shipped' | 'cancelled';
+  status: 'pending' | 'preparing' | 'delivering' | 'delivered' | 'cancelled';
   fulfillment: 'delivery' | 'pickup';
   items: OrderItem[];
   subtotalCents: number;
@@ -70,8 +82,28 @@ export interface Order {
   taxCents: number;
   totalCents: number;
   paymentStatus: string;
+  paymentMethod?: string;
+  paymentPhone?: string;
+  notes?: string;
+  estimatedReadyAt?: string;
+  deliveredAt?: string;
+  statusLogs?: OrderStatusLog[];
+  deliveryCode?: { isUsed: boolean; expiresAt: string; createdAt: string };
+  user?: { id: string; fullName?: string; email: string; phone?: string };
+  address?: Address;
+  unreadMessages?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ManagerStats {
+  totalOrders: number;
+  pendingOrders: number;
+  preparingOrders: number;
+  deliveringOrders: number;
+  deliveredToday: number;
+  totalRevenue: number;
+  unreadMessages: number;
 }
 
 export interface PaginatedResponse<T> {

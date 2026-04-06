@@ -40,6 +40,8 @@ export class NotificationService {
                 type: notification.type,
                 title: notification.title,
                 body: notification.body,
+                metadata: notification.metadata,
+                isRead: false,
                 createdAt: notification.createdAt,
             });
         } catch {
@@ -52,25 +54,29 @@ export class NotificationService {
     /**
      * Notify admin(s) when a new order is placed
      */
-    static async notifyNewOrder(orderNumber: string, totalCents: number) {
-        const admins = await prisma.user.findMany({
-            where: { isAdmin: true, isActive: true },
+    static async notifyNewOrder(orderId: string, orderNumber: string, totalCents: number) {
+        const adminsAndManagers = await prisma.user.findMany({
+            where: {
+                isActive: true,
+                OR: [{ isAdmin: true }, { isManager: true }],
+            },
             select: { id: true, email: true, phone: true },
         });
 
-        for (const admin of admins) {
+        for (const recipient of adminsAndManagers) {
             // In-app notification
             await this.create({
-                userId: admin.id,
+                userId: recipient.id,
                 type: 'order_created',
                 title: 'Nouvelle commande',
                 body: `Commande #${orderNumber} – ${(totalCents / 100).toLocaleString('fr-FR')} FCFA`,
                 channel: 'in_app',
+                metadata: { orderId },
             });
 
             // Email notification
-            if (admin.email) {
-                await sendOrderConfirmationEmail(admin.email, orderNumber, totalCents);
+            if (recipient.email) {
+                await sendOrderConfirmationEmail(recipient.email, orderNumber, totalCents);
             }
         }
     }
@@ -80,15 +86,20 @@ export class NotificationService {
      */
     static async notifyOrderStatusChange(
         userId: string,
+        orderId: string,
         orderNumber: string,
         status: string,
         email?: string | null
     ) {
         const statusLabels: Record<string, string> = {
+            preparing: 'En préparation',
+            delivering: 'En livraison',
+            delivered: 'Livrée',
+            cancelled: 'Annulée',
+            // Legacy compatibility
             en_preparation: 'En préparation',
             validee: 'Validée',
             livree: 'Livrée',
-            cancelled: 'Annulée',
         };
 
         await this.create({
@@ -97,6 +108,7 @@ export class NotificationService {
             title: `Commande #${orderNumber}`,
             body: `Statut: ${statusLabels[status] || status}`,
             channel: 'in_app',
+            metadata: { orderId },
         });
 
         // Email notification
@@ -111,6 +123,7 @@ export class NotificationService {
     static async notifyNewMessage(
         recipientId: string,
         senderName: string,
+        orderId: string,
         orderNumber: string
     ) {
         await this.create({
@@ -119,6 +132,7 @@ export class NotificationService {
             title: 'Nouveau message',
             body: `${senderName} vous a envoyé un message (commande #${orderNumber})`,
             channel: 'in_app',
+            metadata: { orderId },
         });
     }
 

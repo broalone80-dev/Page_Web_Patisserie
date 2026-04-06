@@ -1,5 +1,5 @@
 import { Response, NextFunction } from 'express';
-import { AuthRequest } from '@types/index';
+import { AuthRequest } from '../types/index';
 import { verifyAccessToken } from '@utils/jwt';
 import { sendError } from '@utils/responses';
 
@@ -47,11 +47,27 @@ export const authorizeAdmin = (
 };
 
 /**
+ * Manager or Admin Role Middleware
+ * Must be called after authenticateToken
+ */
+export const authorizeManager = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user?.isAdmin && !req.user?.isManager) {
+    sendError(res, 403, 'Accès réservé aux gestionnaires');
+    return;
+  }
+  next();
+};
+
+/**
  * Optional authentication - user can be null
  */
 export const optionalAuth = (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): void => {
   const authHeader = req.headers['authorization'];

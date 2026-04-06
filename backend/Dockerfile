@@ -1,21 +1,41 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
+# Install all dependencies (including dev for build)
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci
 
-# Copy Prisma schema and generate client
-COPY src/prisma ./src/prisma
-RUN npm install @prisma/client
+# Copy source and build
+COPY tsconfig.json ./
+COPY src ./src
+RUN npx prisma generate --schema=src/prisma/schema.prisma
+RUN npm run build
 
-# Generate Prisma client
-COPY src/prisma ./prisma
-RUN npx prisma generate
+# ─── Production stage ───
+FROM node:20-alpine AS production
 
-# Copy application code
-COPY dist ./dist
+WORKDIR /app
+
+# Create non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Install production dependencies only
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Copy Prisma schema and generated client
+COPY --from=builder /app/src/prisma ./src/prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+# Copy compiled application
+COPY --from=builder /app/dist ./dist
+
+# Create uploads directory
+RUN mkdir -p uploads && chown -R appuser:appgroup /app
+
+USER appuser
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

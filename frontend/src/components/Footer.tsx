@@ -46,11 +46,11 @@ export const Footer: React.FC = () => {
             <ul className="space-y-3">
               {[
                 { href: '/', label: 'Accueil' },
-                { href: '#', label: 'Ma Commande' },
-                { href: '#', label: 'Politique de Livraison' },
-                { href: '#', label: 'Conditions d\'utilisation' },
-                { href: '#', label: 'Livraison & Retours' },
-                { href: '#', label: 'FAQ' },
+                { href: '/orders', label: 'Ma Commande' },
+                { href: '/livraison', label: 'Politique de Livraison' },
+                { href: '/conditions', label: 'Conditions d\'utilisation' },
+                { href: '/livraison#retours', label: 'Livraison & Retours' },
+                { href: '/faq', label: 'FAQ' },
               ].map((link) => (
                 <li key={link.label}>
                   <Link href={link.href} className="text-gray-400 text-sm hover:text-crimson transition-colors">
@@ -66,16 +66,16 @@ export const Footer: React.FC = () => {
             <h4 className="font-semibold text-white mb-4 text-sm uppercase tracking-wider">Boutique</h4>
             <ul className="space-y-3">
               {[
-                'Cupcakes & Gâteaux',
-                'Salés & Street Food',
-                'Boissons Fraîches',
-                'Nos Coffrets',
-                'Nos Collections',
-                'Promotions',
+                { href: '/products?collection=cupcakes-gateaux', label: 'Cupcakes & Gâteaux' },
+                { href: '/products?collection=sales-street-food', label: 'Salés & Street Food' },
+                { href: '/products?collection=boissons', label: 'Boissons Fraîches' },
+                { href: '/products?collection=coffrets', label: 'Nos Coffrets' },
+                { href: '/products', label: 'Nos Collections' },
+                { href: '/products?collection=promotions', label: 'Promotions' },
               ].map((item) => (
-                <li key={item}>
-                  <Link href="/products" className="text-gray-400 text-sm hover:text-crimson transition-colors">
-                    {item}
+                <li key={item.label}>
+                  <Link href={item.href} className="text-gray-400 text-sm hover:text-crimson transition-colors">
+                    {item.label}
                   </Link>
                 </li>
               ))}

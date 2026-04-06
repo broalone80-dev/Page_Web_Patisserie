@@ -47,6 +47,7 @@ export class AuthService {
         fullName: true,
         phone: true,
         isAdmin: true,
+        isManager: true,
         createdAt: true,
       },
     });
@@ -56,6 +57,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       isAdmin: user.isAdmin,
+      isManager: user.isManager,
     });
     const refreshToken = generateRefreshToken(user.id);
 
@@ -92,6 +94,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       isAdmin: user.isAdmin,
+      isManager: user.isManager,
     });
     const refreshToken = generateRefreshToken(user.id);
 
@@ -111,6 +114,7 @@ export class AuthService {
         fullName: user.fullName,
         phone: user.phone,
         isAdmin: user.isAdmin,
+        isManager: user.isManager,
         avatarUrl: user.avatarUrl,
       },
       accessToken,
@@ -140,7 +144,7 @@ export class AuthService {
     // Get user
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { id: true, email: true, isAdmin: true, isActive: true },
+      select: { id: true, email: true, isAdmin: true, isManager: true, isActive: true },
     });
 
     if (!user || !user.isActive) {
@@ -154,6 +158,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       isAdmin: user.isAdmin,
+      isManager: user.isManager,
     });
     const newRefreshToken = generateRefreshToken(user.id);
 
@@ -260,6 +265,7 @@ export class AuthService {
         fullName: true,
         phone: true,
         isAdmin: true,
+        isManager: true,
         avatarUrl: true,
         createdAt: true,
         updatedAt: true,
@@ -280,6 +286,7 @@ export class AuthService {
         fullName: true,
         phone: true,
         isAdmin: true,
+        isManager: true,
         avatarUrl: true,
         updatedAt: true,
       },

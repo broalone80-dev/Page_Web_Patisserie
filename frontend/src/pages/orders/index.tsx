@@ -37,18 +37,26 @@ export default function OrdersPage() {
 
     const statusColors: Record<string, string> = {
         pending: 'bg-yellow-100 text-yellow-800',
+        preparing: 'bg-blue-100 text-blue-800',
+        delivering: 'bg-purple-100 text-purple-800',
+        delivered: 'bg-green-100 text-green-800',
+        cancelled: 'bg-red-100 text-red-800',
+        // Legacy
         en_preparation: 'bg-blue-100 text-blue-800',
         validee: 'bg-green-100 text-green-800',
         livree: 'bg-emerald-100 text-emerald-800',
-        cancelled: 'bg-red-100 text-red-800',
     };
 
     const statusLabels: Record<string, string> = {
         pending: 'En attente',
+        preparing: 'En préparation',
+        delivering: 'En livraison',
+        delivered: 'Livrée',
+        cancelled: 'Annulée',
+        // Legacy
         en_preparation: 'En préparation',
         validee: 'Validée',
         livree: 'Livrée',
-        cancelled: 'Annulée',
     };
 
     if (loading) {

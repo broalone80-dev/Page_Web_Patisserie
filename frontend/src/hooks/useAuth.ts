@@ -4,14 +4,15 @@ import { authService } from '@services/api';
 
 export const useAuth = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const { user, accessToken, setAuth, clearAuth } = useAuthStore();
+  const { user, accessToken, refreshToken, setAuth, clearAuth } = useAuthStore();
 
   useEffect(() => {
     const initAuth = async () => {
       if (accessToken) {
         try {
-          const userData = await authService.getMe();
-          setAuth(userData, accessToken);
+          const res = await authService.getProfile();
+          const userData = res.data?.user || res.data || res;
+          setAuth(userData, accessToken, refreshToken || '');
         } catch (error) {
           clearAuth();
         }
@@ -26,8 +27,9 @@ export const useAuth = () => {
     setIsLoading(true);
     try {
       const result = await authService.login(email, password);
-      setAuth(result.user, result.accessToken);
-      return result;
+      const data = result.data || result;
+      setAuth(data.user, data.accessToken, data.refreshToken);
+      return data;
     } finally {
       setIsLoading(false);
     }
@@ -37,8 +39,9 @@ export const useAuth = () => {
     setIsLoading(true);
     try {
       const result = await authService.register(email, password, fullName, phone);
-      setAuth(result.user, result.accessToken);
-      return result;
+      const data = result.data || result;
+      setAuth(data.user, data.accessToken, data.refreshToken);
+      return data;
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +58,7 @@ export const useAuth = () => {
   return {
     user,
     isLoading,
-    isAuthenticated: !!accessToken,
+    isAuthenticated: !!accessToken && !!user,
     login,
     register,
     logout,

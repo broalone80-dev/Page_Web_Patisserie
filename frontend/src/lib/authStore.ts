@@ -6,6 +6,7 @@ interface User {
   fullName?: string | null;
   phone?: string | null;
   isAdmin: boolean;
+  isManager: boolean;
   avatarUrl?: string | null;
 }
 
@@ -18,6 +19,7 @@ interface AuthStore {
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
   isAdmin: () => boolean;
+  isManager: () => boolean;
   isAuthenticated: () => boolean;
   updateUser: (updates: Partial<User>) => void;
 }
@@ -48,6 +50,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   isAdmin: () => {
     return get().user?.isAdmin ?? false;
+  },
+
+  isManager: () => {
+    return get().user?.isManager ?? false;
   },
 
   isAuthenticated: () => {

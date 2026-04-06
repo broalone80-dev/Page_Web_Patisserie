@@ -131,8 +131,10 @@ export const authService = {
 // ============================================
 
 export const productService = {
-  async getAll(page = 1, limit = 20) {
-    const { data } = await apiClient.get('/products', { params: { page, limit } });
+  async getAll(page = 1, limit = 20, search?: string) {
+    const params: any = { page, limit };
+    if (search) params.search = search;
+    const { data } = await apiClient.get('/products', { params });
     return data;
   },
 
@@ -177,9 +179,17 @@ export const orderService = {
     items: Array<{ productId: string; quantity: number }>;
     fulfillment: string;
     addressId?: string;
+    quarter?: string;
     notes?: string;
+    paymentMethod?: string;
+    paymentPhone?: string;
   }) {
     const { data } = await apiClient.post('/orders', orderData);
+    return data;
+  },
+
+  async getDeliveryFee(queryString: string) {
+    const { data } = await apiClient.get(`/orders/delivery-fee?${queryString}`);
     return data;
   },
 
@@ -190,6 +200,44 @@ export const orderService = {
 
   async getById(id: string) {
     const { data } = await apiClient.get(`/orders/${id}`);
+    return data;
+  },
+
+  async getTimeline(id: string) {
+    const { data } = await apiClient.get(`/orders/${id}/timeline`);
+    return data;
+  },
+
+  async getDeliveryCode(id: string) {
+    const { data } = await apiClient.get(`/orders/${id}/delivery-code`);
+    return data;
+  },
+};
+
+// ============================================
+// MANAGER SERVICE
+// ============================================
+
+export const managerService = {
+  async getDashboard() {
+    const { data } = await apiClient.get('/orders/manager/dashboard');
+    return data;
+  },
+
+  async getOrders(page = 1, limit = 20, status?: string) {
+    const { data } = await apiClient.get('/orders/manager/orders', {
+      params: { page, limit, status },
+    });
+    return data;
+  },
+
+  async updateOrderStatus(orderId: string, status: string, note?: string) {
+    const { data } = await apiClient.patch(`/orders/${orderId}/status`, { status, note });
+    return data;
+  },
+
+  async validateDelivery(orderId: string, code: string) {
+    const { data } = await apiClient.post(`/orders/${orderId}/validate-delivery`, { code });
     return data;
   },
 };
@@ -251,6 +299,11 @@ export const adminService = {
     return data;
   },
 
+  async getProducts(page = 1, limit = 200) {
+    const { data } = await apiClient.get('/admin/products', { params: { page, limit } });
+    return data;
+  },
+
   async getUsers(page = 1, limit = 20, search?: string) {
     const { data } = await apiClient.get('/admin/users', { params: { page, limit, search } });
     return data;
@@ -266,8 +319,8 @@ export const adminService = {
     return data;
   },
 
-  async updateOrderStatus(id: string, status: string) {
-    const { data } = await apiClient.put(`/admin/orders/${id}/status`, { status });
+  async updateOrderStatus(id: string, status: string, note?: string) {
+    const { data } = await apiClient.patch(`/orders/${id}/status`, { status, note });
     return data;
   },
 
@@ -319,6 +372,36 @@ export const uploadService = {
 
   async deleteImage(publicId: string) {
     const { data } = await apiClient.delete(`/upload/${publicId}`);
+    return data;
+  },
+};
+
+// ============================================
+// PAYMENT SERVICE — Mobile Money Cameroun
+// ============================================
+
+export const paymentService = {
+  async initiate(orderId: string, provider: 'orange_money' | 'mtn_momo', phone: string) {
+    const { data } = await apiClient.post('/payments/mobile/initiate', {
+      orderId,
+      provider,
+      phone,
+    });
+    return data;
+  },
+
+  async checkStatus(paymentId: string) {
+    const { data } = await apiClient.get(`/payments/mobile/status/${paymentId}`);
+    return data;
+  },
+
+  async getPayment(orderId: string) {
+    const { data } = await apiClient.get(`/payments/${orderId}`);
+    return data;
+  },
+
+  async confirmManual(paymentId: string) {
+    const { data } = await apiClient.post('/payments/manual/confirm', { paymentId });
     return data;
   },
 };

@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { adminService } from '@services/api';
 import { useAuthStore } from '@lib/authStore';
+import { AdminLayout } from '@components/AdminLayout';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -38,18 +39,26 @@ export default function AdminDashboard() {
 
   const statusColors: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-800',
+    preparing: 'bg-blue-100 text-blue-800',
+    delivering: 'bg-purple-100 text-purple-800',
+    delivered: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+    // legacy compat
     en_preparation: 'bg-blue-100 text-blue-800',
     validee: 'bg-green-100 text-green-800',
     livree: 'bg-emerald-100 text-emerald-800',
-    cancelled: 'bg-red-100 text-red-800',
   };
 
   const statusLabels: Record<string, string> = {
     pending: 'En attente',
+    preparing: 'En préparation',
+    delivering: 'En livraison',
+    delivered: 'Livrée',
+    cancelled: 'Annulée',
+    // legacy compat
     en_preparation: 'En préparation',
     validee: 'Validée',
     livree: 'Livrée',
-    cancelled: 'Annulée',
   };
 
   if (loading) {
@@ -66,21 +75,7 @@ export default function AdminDashboard() {
         <title>Dashboard Admin – GuiGui Pâtisserie</title>
       </Head>
 
-      <div className="min-h-screen bg-stone-50">
-        {/* Header */}
-        <div className="bg-white border-b border-stone-200 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-stone-800">Dashboard Admin</h1>
-              <p className="text-sm text-stone-500">Bienvenue, {user?.fullName || user?.email}</p>
-            </div>
-            <Link href="/" className="text-crimson-600 hover:text-crimson-800 text-sm font-medium">
-              ← Retour au site
-            </Link>
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 py-8">
+      <AdminLayout title={`Bienvenue, ${user?.fullName || user?.email || 'Admin'}`}>
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
@@ -192,8 +187,7 @@ export default function AdminDashboard() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+      </AdminLayout>
     </>
   );
 }

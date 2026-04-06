@@ -23,14 +23,14 @@ export class ChatService {
         // Check access: either the order owner or an admin
         const sender = await prisma.user.findUnique({
             where: { id: senderId },
-            select: { id: true, isAdmin: true, fullName: true, email: true },
+            select: { id: true, isAdmin: true, isManager: true, fullName: true, email: true },
         });
 
         if (!sender) {
             throw new Error('Utilisateur introuvable');
         }
 
-        if (!sender.isAdmin && order.userId !== senderId) {
+        if (!sender.isAdmin && !sender.isManager && order.userId !== senderId) {
             throw new Error('Accès non autorisé');
         }
 
@@ -43,7 +43,7 @@ export class ChatService {
             },
             include: {
                 sender: {
-                    select: { id: true, fullName: true, isAdmin: true },
+                    select: { id: true, fullName: true, isAdmin: true, isManager: true },
                 },
             },
         });
@@ -63,23 +63,26 @@ export class ChatService {
         }
 
         // Notify the recipient
-        const recipientId = sender.isAdmin ? order.userId : null;
+        const isStaff = sender.isAdmin || sender.isManager;
+        const recipientId = isStaff ? order.userId : null;
         if (recipientId) {
             await NotificationService.notifyNewMessage(
                 recipientId,
                 sender.fullName || 'GuiGui Support',
+                orderId,
                 order.orderNumber
             );
-        } else if (!sender.isAdmin) {
-            // Client sent message → notify all admins
-            const admins = await prisma.user.findMany({
-                where: { isAdmin: true, isActive: true },
+        } else if (!isStaff) {
+            // Client sent message → notify all admins & managers
+            const staff = await prisma.user.findMany({
+                where: { OR: [{ isAdmin: true }, { isManager: true }], isActive: true },
                 select: { id: true },
             });
-            for (const admin of admins) {
+            for (const s of staff) {
                 await NotificationService.notifyNewMessage(
-                    admin.id,
+                    s.id,
                     sender.fullName || 'Client',
+                    orderId,
                     order.orderNumber
                 );
             }

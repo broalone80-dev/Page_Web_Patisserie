@@ -23,11 +23,8 @@ export default function LoginPage() {
       const { user, accessToken, refreshToken } = response.data;
       setAuth(user, accessToken, refreshToken);
 
-      if (user.isAdmin) {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/');
-      }
+      const returnUrl = (router.query.redirect as string) || (user.isAdmin ? '/admin/dashboard' : '/');
+      router.push(returnUrl);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erreur de connexion');
     } finally {

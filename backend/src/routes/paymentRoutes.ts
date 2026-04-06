@@ -4,21 +4,14 @@ import { authenticateToken } from '@middleware/auth';
 
 const router = Router();
 
-// All payment routes require authentication
-router.use(authenticateToken);
+// ─── Authenticated routes ───────────────────────
+router.post('/mobile/initiate', authenticateToken, PaymentController.initiatePayment);
+router.get('/mobile/status/:paymentId', authenticateToken, PaymentController.checkStatus);
+router.post('/manual/confirm', authenticateToken, PaymentController.confirmManualPayment);
+router.get('/:orderId', authenticateToken, PaymentController.getPayment);
 
-// Initiate payment
-router.post('/initiate', PaymentController.initiatePayment);
-
-// Get payment details
-router.get('/:orderId', PaymentController.getPayment);
-
-// Callbacks (no auth needed - must be added at app level)
-// router.get('/callback/flutterwave', PaymentController.flutterwaveCallback);
-// router.get('/callback/cinetpay', PaymentController.cinetpayCallback);
-
-// Webhooks (no auth needed - must be added at app level)
-// router.post('/webhook/flutterwave', PaymentController.flutterwaveWebhook);
-// router.post('/webhook/cinetpay', PaymentController.cinetpayWebhook);
+// ─── Webhooks (NO auth - signature verified in handler) ─
+router.post('/mobile/webhook/orange', PaymentController.orangeWebhook);
+router.post('/mobile/webhook/mtn', PaymentController.mtnWebhook);
 
 export default router;

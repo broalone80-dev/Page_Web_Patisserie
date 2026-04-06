@@ -1,16 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthStore } from '@lib/authStore';
 import { authService } from '@services/api';
 import { useRouter } from 'next/router';
-import { FiSearch, FiShoppingCart, FiMenu, FiX, FiUser } from 'react-icons/fi';
+import { FiSearch, FiShoppingCart, FiMenu, FiX, FiUser, FiLogOut, FiPackage, FiSettings } from 'react-icons/fi';
+import { useCartStore } from '@lib/cartStore';
+import { NotificationBell } from './NotificationBell';
 
 export const Header: React.FC = () => {
   const { user, clearAuth } = useAuthStore();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const cartItemCount = useCartStore((state) => state.getTotalItems());
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    router.push(`/products?search=${encodeURIComponent(q)}`);
+    setSearchOpen(false);
+    setMobileMenuOpen(false);
+    setSearchQuery('');
+  };
+
+  // Close user menu on click outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    if (userMenuOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [userMenuOpen]);
 
   const handleLogout = async () => {
     try {
@@ -24,9 +51,10 @@ export const Header: React.FC = () => {
 
   const navLinks = [
     { href: '/', label: 'Accueil' },
+    { href: '/menu', label: 'Menu' },
     { href: '/products', label: 'Boutique' },
-    { href: '#about', label: 'À propos' },
-    { href: '#contact', label: 'Contact' },
+    { href: '/about', label: 'À propos' },
+    { href: '/contact', label: 'Contact' },
   ];
 
   const isActive = (href: string) => router.pathname === href;
@@ -68,17 +96,21 @@ export const Header: React.FC = () => {
           {/* Search */}
           <div className="hidden md:flex items-center relative">
             {searchOpen ? (
-              <div className="flex items-center bg-gray-100 rounded-full px-4 py-2 animate-fade-in">
+              <form onSubmit={handleSearch} className="flex items-center bg-gray-100 rounded-full px-4 py-2 animate-fade-in">
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Rechercher..."
                   className="bg-transparent border-none outline-none text-sm w-40 placeholder-gray-400"
                   autoFocus
-                  onBlur={() => setSearchOpen(false)}
+                  onBlur={() => { if (!searchQuery) setSearchOpen(false); }}
                   aria-label="Rechercher un produit"
                 />
-                <FiSearch className="text-gray-400 ml-2" size={16} />
-              </div>
+                <button type="submit" className="text-gray-400 ml-2 hover:text-crimson">
+                  <FiSearch size={16} />
+                </button>
+              </form>
             ) : (
               <button
                 onClick={() => setSearchOpen(true)}
@@ -92,22 +124,65 @@ export const Header: React.FC = () => {
 
           {/* User / Auth */}
           {user ? (
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-3 relative" ref={userMenuRef}>
               <Link href="/orders" className="text-sm text-dark hover:text-crimson transition-colors">
                 Commandes
               </Link>
-              {user.isAdmin && (
-                <Link href="/admin/dashboard" className="text-sm font-semibold text-crimson hover:text-crimson-dark transition-colors">
-                  Admin
+              {(user.isAdmin || user.isManager) && (
+                <Link href={user.isAdmin ? '/admin/dashboard' : '/manager'} className="text-xs font-medium text-crimson hover:text-crimson/80 transition-colors">
+                  Gestion
                 </Link>
               )}
               <button
-                onClick={handleLogout}
-                className="text-sm text-gray-500 hover:text-crimson transition-colors"
-                aria-label="Se déconnecter"
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-1.5 p-2 text-dark hover:text-crimson transition-colors"
+                aria-label="Menu utilisateur"
               >
-                <FiUser size={20} />
+                <div className="w-8 h-8 rounded-full bg-crimson/10 flex items-center justify-center">
+                  <span className="text-xs font-bold text-crimson">
+                    {(user.fullName || user.email || '?').charAt(0).toUpperCase()}
+                  </span>
+                </div>
               </button>
+
+              {/* User dropdown */}
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl border border-stone-200 shadow-xl z-50 overflow-hidden animate-fade-in">
+                  <div className="px-4 py-3 border-b border-stone-100 bg-stone-50">
+                    <p className="text-sm font-semibold text-stone-800 truncate">{user.fullName || 'Mon compte'}</p>
+                    <p className="text-[11px] text-stone-500 truncate">{user.email}</p>
+                  </div>
+                  <div className="py-1">
+                    <Link
+                      href="/orders"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                    >
+                      <FiPackage size={16} className="text-stone-400" />
+                      Mes commandes
+                    </Link>
+                    {(user.isAdmin || user.isManager) && (
+                      <Link
+                        href={user.isAdmin ? '/admin/dashboard' : '/manager'}
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
+                      >
+                        <FiSettings size={16} className="text-stone-400" />
+                        Gestion
+                      </Link>
+                    )}
+                  </div>
+                  <div className="border-t border-stone-100 py-1">
+                    <button
+                      onClick={() => { setUserMenuOpen(false); handleLogout(); }}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                    >
+                      <FiLogOut size={16} />
+                      Déconnexion
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <Link
@@ -119,6 +194,9 @@ export const Header: React.FC = () => {
             </Link>
           )}
 
+          {/* Notifications */}
+          <NotificationBell />
+
           {/* Cart */}
           <Link
             href="/cart"
@@ -126,9 +204,11 @@ export const Header: React.FC = () => {
             aria-label="Panier"
           >
             <FiShoppingCart size={20} />
-            <span className="absolute -top-1 -right-1 bg-crimson text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-              0
-            </span>
+            {cartItemCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-crimson text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {cartItemCount > 99 ? '99+' : cartItemCount}
+              </span>
+            )}
           </Link>
 
           {/* Mobile Menu Toggle */}
@@ -169,15 +249,17 @@ export const Header: React.FC = () => {
 
             {/* Mobile Search */}
             <div className="px-4 py-3">
-              <div className="flex items-center bg-gray-100 rounded-full px-4 py-2">
+              <form onSubmit={handleSearch} className="flex items-center bg-gray-100 rounded-full px-4 py-2">
                 <FiSearch className="text-gray-400 mr-2" size={16} />
                 <input
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Rechercher..."
                   className="bg-transparent border-none outline-none text-sm w-full placeholder-gray-400"
                   aria-label="Rechercher un produit"
                 />
-              </div>
+              </form>
             </div>
 
             {/* Mobile Nav Links */}
@@ -206,13 +288,13 @@ export const Header: React.FC = () => {
                   >
                     📦 Mes commandes
                   </Link>
-                  {user.isAdmin && (
+                  {(user.isAdmin || user.isManager) && (
                     <Link
-                      href="/admin/dashboard"
-                      className="block py-3 text-sm font-semibold text-crimson border-b border-gray-100"
+                      href={user.isAdmin ? '/admin/dashboard' : '/manager'}
+                      className="block py-3 text-sm font-medium border-b border-gray-100 text-crimson hover:text-crimson/80 transition-colors"
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      ⚙️ Administration
+                      🧁 Gestion
                     </Link>
                   )}
                   <button

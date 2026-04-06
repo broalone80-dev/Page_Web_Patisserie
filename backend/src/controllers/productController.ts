@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest, CreateProductDTO, UpdateProductDTO } from '@types/index';
+import { AuthRequest, CreateProductDTO, UpdateProductDTO } from '../types/index';
 import { ProductService } from '@services/productService';
 import { sendSuccess, sendError } from '@utils/responses';
 import { ApiError } from '@utils/errors';
@@ -10,11 +10,14 @@ export class ProductController {
    */
   static async getAllProducts(req: AuthRequest, res: Response) {
     try {
-      const skip = parseInt(req.query.skip as string) || 0;
-      const take = Math.min(parseInt(req.query.take as string) || 20, 100);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+      const skip = (page - 1) * limit;
+      const featured = req.query.featured === 'true' ? true : undefined;
+      const search = (req.query.search as string)?.trim() || undefined;
 
-      const result = await ProductService.getAllProducts(skip, take);
-      sendSuccess(res, 200, result);
+      const result = await ProductService.getAllProducts(skip, limit, true, featured, search);
+      sendSuccess(res, 200, 'Produits récupérés', { products: result.products, total: result.total, page, limit });
     } catch (error) {
       sendError(res, 500, 'Failed to fetch products');
     }
@@ -27,7 +30,7 @@ export class ProductController {
     try {
       const { slug } = req.params;
       const product = await ProductService.getProductBySlug(slug);
-      sendSuccess(res, 200, product);
+      sendSuccess(res, 200, 'Produit récupéré', { product });
     } catch (error) {
       if (error instanceof ApiError) {
         sendError(res, error.statusCode, error.message);
@@ -50,7 +53,7 @@ export class ProductController {
       }
 
       const product = await ProductService.createProduct(data);
-      sendSuccess(res, 201, product, 'Product created successfully');
+      sendSuccess(res, 201, 'Product created successfully', product);
     } catch (error) {
       if (error instanceof ApiError) {
         sendError(res, error.statusCode, error.message);
@@ -69,7 +72,7 @@ export class ProductController {
       const data = req.body as UpdateProductDTO;
 
       const product = await ProductService.updateProduct(id, data);
-      sendSuccess(res, 200, product, 'Product updated successfully');
+      sendSuccess(res, 200, 'Product updated successfully', product);
     } catch (error) {
       if (error instanceof ApiError) {
         sendError(res, error.statusCode, error.message);
@@ -86,7 +89,7 @@ export class ProductController {
     try {
       const { id } = req.params;
       const product = await ProductService.deleteProduct(id);
-      sendSuccess(res, 200, product, 'Product deleted successfully');
+      sendSuccess(res, 200, 'Product deleted successfully', product);
     } catch (error) {
       if (error instanceof ApiError) {
         sendError(res, error.statusCode, error.message);
@@ -110,7 +113,7 @@ export class ProductController {
       }
 
       const image = await ProductService.addProductImage(id, url, altText);
-      sendSuccess(res, 201, image, 'Image added successfully');
+      sendSuccess(res, 201, 'Image added successfully', image);
     } catch (error) {
       if (error instanceof ApiError) {
         sendError(res, error.statusCode, error.message);

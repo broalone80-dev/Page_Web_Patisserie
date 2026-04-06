@@ -1,5 +1,5 @@
 import prisma from '@config/database';
-import { CreateOrderDTO, UpdateOrderStatusDTO } from '@types/index';
+import { CreateOrderDTO, UpdateOrderStatusDTO } from '../types/index';
 import { ApiError } from '@utils/errors';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -58,6 +58,8 @@ export class OrderService {
         taxCents,
         totalCents,
         paymentStatus: 'pending',
+        paymentMethod: data.paymentMethod || null,
+        paymentPhone: data.paymentPhone || null,
         items: {
           create: items.map((item) => ({
             productId: item.productId,

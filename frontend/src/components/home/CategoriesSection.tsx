@@ -1,36 +1,60 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { categoryService } from '@services/api';
 
-const categories = [
-    {
-        name: 'Cupcakes',
-        image: 'https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?w=400&q=80',
-    },
-    {
-        name: 'Crêpes',
-        image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=400&q=80',
-    },
-    {
-        name: 'Pasteis',
-        image: 'https://images.unsplash.com/photo-1623334044303-241021148842?w=400&q=80',
-    },
-    {
-        name: 'Beignets',
-        image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&q=80',
-    },
-    {
-        name: 'Glaces',
-        image: 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=400&q=80',
-    },
-    {
-        name: 'Jus naturels',
-        image: 'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=400&q=80',
-    },
-];
+interface CategoryItem {
+    id: string;
+    name: string;
+    slug: string;
+    image?: string;
+    productCount?: number;
+}
+
+const CATEGORY_IMAGES: Record<string, string> = {
+    'patisserie': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80',
+    'viennoiserie': 'https://images.unsplash.com/photo-1555507036-ab1f4038024a?w=400&q=80',
+    'boulangerie': 'https://images.unsplash.com/photo-1549931319-a545753d62ce?w=400&q=80',
+    'snacking-sale': 'https://images.unsplash.com/photo-1623334044303-241021148842?w=400&q=80',
+    'boissons': 'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=400&q=80',
+    'glaces': 'https://images.unsplash.com/photo-1497034825429-c343d7c6a68f?w=400&q=80',
+    'cupcakes': 'https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?w=400&q=80',
+    'crepes': 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=400&q=80',
+    'gateaux': 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&q=80',
+    'beignets': 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&q=80',
+    'tartes': 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&q=80',
+    'jus-naturels': 'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?w=400&q=80',
+    'petit-dejeuner': 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=400&q=80',
+    'default': 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&q=80',
+};
+
+const getCategoryImage = (slug: string, image?: string): string => {
+    if (image) return image;
+    return CATEGORY_IMAGES[slug] || CATEGORY_IMAGES['default'];
+};
 
 export const CategoriesSection: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const [categories, setCategories] = useState<CategoryItem[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await categoryService.getAll();
+                const cats = res.data?.categories || [];
+                // Filter to only parent categories (no parentId) with products
+                const parentCats = cats.filter((c: any) => !c.parentId);
+                setCategories(parentCats);
+            } catch (error) {
+                console.error('Failed to fetch categories:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const scroll = (direction: 'left' | 'right') => {
         if (scrollRef.current) {
@@ -41,6 +65,8 @@ export const CategoriesSection: React.FC = () => {
             });
         }
     };
+
+    if (loading || categories.length === 0) return null;
 
     return (
         <section className="py-16 md:py-20 bg-white">
@@ -65,15 +91,16 @@ export const CategoriesSection: React.FC = () => {
                         ref={scrollRef}
                         className="flex gap-6 overflow-x-auto scrollbar-hide px-2 py-4 snap-x snap-mandatory justify-center"
                     >
-                        {categories.map((cat, index) => (
-                            <button
-                                key={index}
+                    {categories.map((cat) => (
+                            <Link
+                                key={cat.id}
+                                href={`/products?category=${cat.slug}`}
                                 className="flex flex-col items-center gap-3 flex-shrink-0 group cursor-pointer snap-center"
                                 aria-label={`Catégorie ${cat.name}`}
                             >
                                 <div className="w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-3 border-transparent group-hover:border-crimson transition-all duration-300 shadow-card">
                                     <Image
-                                        src={cat.image}
+                                        src={getCategoryImage(cat.slug, cat.image)}
                                         alt={cat.name}
                                         width={128}
                                         height={128}
@@ -83,7 +110,7 @@ export const CategoriesSection: React.FC = () => {
                                 <span className="text-sm font-medium text-dark group-hover:text-crimson transition-colors">
                                     {cat.name}
                                 </span>
-                            </button>
+                            </Link>
                         ))}
                     </div>
 
