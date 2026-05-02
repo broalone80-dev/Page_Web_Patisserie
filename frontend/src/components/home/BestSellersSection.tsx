@@ -6,7 +6,7 @@ import { FaHeart } from 'react-icons/fa';
 import { productService } from '@services/api';
 import { formatPrice } from '@lib/utils';
 import { useCartStore } from '@lib/cartStore';
-import { Product } from '@types/index';
+import { Product } from '@/types/index';
 
 interface BestSellerProduct {
     id: string;

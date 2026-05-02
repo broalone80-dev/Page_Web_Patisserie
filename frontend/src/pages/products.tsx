@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { productService, categoryService } from '@services/api';
-import { Product } from '@types/index';
+import { Product } from '@/types/index';
 import { ProductCard } from '@components/ProductCard';
 import { FiFilter, FiX } from 'react-icons/fi';
 

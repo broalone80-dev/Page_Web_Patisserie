@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Product } from '@types/index';
+import { Product } from '@/types/index';
 import { useCartStore } from '@lib/cartStore';
 import { formatPrice } from '@lib/utils';
 import { FiMinus, FiPlus, FiCheck } from 'react-icons/fi';

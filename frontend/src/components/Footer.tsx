@@ -119,12 +119,9 @@ export const Footer: React.FC = () => {
 
       {/* Copyright Bar */}
       <div className="border-t border-white/10">
-        <div className="container-custom py-4 flex flex-col md:flex-row items-center justify-between gap-2">
+        <div className="container-custom py-4 flex flex-col items-center justify-center">
           <p className="text-gray-500 text-xs">
             © {new Date().getFullYear()} Chez GuiGui. Tous droits réservés.
-          </p>
-          <p className="text-gray-500 text-xs">
-            Fabriqué avec ❤️ à Yaoundé, Cameroun par <a href="https://github.com/broalone80-dev" target="_blank" rel="noopener noreferrer" className="text-crimson hover:text-crimson-light transition-colors">broalone80-dev</a>
           </p>
         </div>
       </div>
